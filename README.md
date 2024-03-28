@@ -1,3 +1,26 @@
+## fields2cover (rolling) - 1.2.1-5
+
+The packages in the `fields2cover` repository were released into the `rolling` distro by running `/usr/bin/bloom-release fields2cover --track rolling --rosdistro rolling` on `Thu, 28 Mar 2024 11:01:50 -0000`
+
+The `fields2cover` package was released.
+
+Version of package(s) in repository `fields2cover`:
+
+- upstream repository: https://github.com/Fields2Cover/fields2cover.git
+- release repository: https://github.com/ros2-gbp/fields2cover-release.git
+- rosdistro version: `1.2.1-3`
+- old version: `1.2.1-4`
+- new version: `1.2.1-5`
+
+Versions of tools used:
+
+- bloom version: `0.11.2`
+- catkin_pkg version: `1.0.0`
+- rosdep version: `0.22.2`
+- rosdistro version: `0.9.0`
+- vcstools version: `0.1.42`
+
+
 ## fields2cover (rolling) - 1.2.1-4
 
 The packages in the `fields2cover` repository were released into the `rolling` distro by running `/usr/bin/bloom-release fields2cover --track rolling --rosdistro rolling` on `Thu, 28 Mar 2024 10:37:29 -0000`
