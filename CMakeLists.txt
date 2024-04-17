@@ -93,15 +93,19 @@ FetchContent_Declare(matplot FETCHCONTENT_UPDATES_DISCONNECTED
   GIT_REPOSITORY https://github.com/alandefreitas/matplotplusplus
 )
 
+FetchContent_Declare(json FETCHCONTENT_UPDATES_DISCONNECTED
+  URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+)
+
 FetchContent_MakeAvailable(
   steering_functions
   spline
   matplot
+  json
 )
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 include(cmake/Modules/FindTinyXML2.cmake)
-find_package(nlohmann_json REQUIRED)
 find_package(Threads REQUIRED)
 find_package(GDAL 3.0 REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -110,15 +114,19 @@ find_library(MATH_LIBRARY m)
 find_package(ortools CONFIG)
 if(NOT ortools_FOUND)
   message("Or-tools not found -- Downloading and building from source")
+  set(ORTOOLS_FETCH ON)
 
   FetchContent_Declare(ortools FETCHCONTENT_UPDATES_DISCONNECTED
-    URL https://github.com/google/or-tools/releases/download/v9.9/or-tools_amd64_ubuntu-22.04_cpp_v9.9.3963.tar.gz
+    GIT_REPOSITORY https://github.com/google/or-tools.git
+    GIT_TAG v9.9
+    CMAKE_ARGS -DBUILD_DEPS=ON
   )
-  FetchContent_Populate(ortools)
-  include_directories(${ortools_SOURCE_DIR}/include)
-  include_directories(${ortools_SOURCE_DIR}/lib)
-endif()
+  FetchContent_MakeAvailable(ortools)
 
+  set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
+  include(CTest)
+  include(GNUInstallDirs)
+endif()
 
 
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -179,7 +187,7 @@ endif(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   include(cmake/Modules/CodeCoverage.cmake)
   APPEND_COVERAGE_COMPILER_FLAGS()
-  if(NOT ortools_POPULATED)
+  if(NOT ORTOOLS_FETCH)
     target_compile_options(Fields2Cover PRIVATE -pedantic -Werror)
   endif()
   target_compile_options(Fields2Cover PRIVATE
@@ -215,23 +223,13 @@ target_link_libraries(Fields2Cover
     -lgeos_c
     ${MATH_LIBRARY}
   PRIVATE
+    ortools::ortools
     nlohmann_json::nlohmann_json
     tinyxml2::tinyxml2
     steering_functions
     spline
     matplot
 )
-
-if(ortools_POPULATED)
-  target_link_libraries(Fields2Cover PRIVATE
-    ${ortools_SOURCE_DIR}/lib/libortools.so
-    ${ortools_SOURCE_DIR}/lib/libprotobuf.a
-  )
-else(ortools_POPULATED)
-  target_link_libraries(Fields2Cover PRIVATE
-    ortools::ortools
-  )
-endif(ortools_POPULATED)
 
 if(ALLOW_PARALLELIZATION)
   target_link_libraries(Fields2Cover PRIVATE tbb)
@@ -242,17 +240,33 @@ set_target_properties(Fields2Cover
   PUBLIC_HEADER "include/fields2cover.h"
 )
 
-install(
-  TARGETS
-    Fields2Cover
-    steering_functions
-    matplot
-  EXPORT Fields2Cover-targets
-  LIBRARY DESTINATION ${INSTALL_LIB_DIR}
-  ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
-  RUNTIME DESTINATION ${INSTALL_BIN_DIR}
-  PUBLIC_HEADER DESTINATION ${INSTALL_INCLUDE_DIR}
+if(ORTOOLS_FETCH)
+  install(
+    TARGETS
+      Fields2Cover
+      steering_functions
+      matplot
+      ortools
+    EXPORT Fields2Cover-targets
+    LIBRARY DESTINATION ${INSTALL_LIB_DIR}
+    ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
+    RUNTIME DESTINATION ${INSTALL_BIN_DIR}
+    PUBLIC_HEADER DESTINATION ${INSTALL_INCLUDE_DIR}
+  )
+else(ORTOOLS_FETCH)
+  install(
+    TARGETS
+      Fields2Cover
+      steering_functions
+      matplot
+      #ortools
+    EXPORT Fields2Cover-targets
+    LIBRARY DESTINATION ${INSTALL_LIB_DIR}
+    ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
+    RUNTIME DESTINATION ${INSTALL_BIN_DIR}
+    PUBLIC_HEADER DESTINATION ${INSTALL_INCLUDE_DIR}
 )
+endif(ORTOOLS_FETCH)
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(Fields2CoverConfigVersion.cmake
@@ -292,14 +306,26 @@ install(
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/fields2cover
 )
 
-export(
-  TARGETS
-    Fields2Cover
-    steering_functions
-    matplot
-  FILE
-    Fields2Cover-${type}-Targets.cmake
-)
+if(ORTOOLS_FETCH)
+  export(
+    TARGETS
+      Fields2Cover
+      steering_functions
+      matplot
+      ortools
+    FILE
+      Fields2Cover-${type}-Targets.cmake
+  )
+else(ORTOOLS_FETCH)
+  export(
+    TARGETS
+      Fields2Cover
+      steering_functions
+      matplot
+    FILE
+      Fields2Cover-${type}-Targets.cmake
+  )
+endif(ORTOOLS_FETCH)
 
 # Copy public headers during `make install`
 install(
