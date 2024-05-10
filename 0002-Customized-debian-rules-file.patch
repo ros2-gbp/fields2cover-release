@@ -1,0 +1,25 @@
+From 3b43a1059cb70893808c024c0c1d694706ef3639 Mon Sep 17 00:00:00 2001
+From: Gonzalo-Mier <gonzalo.miermunoz@wur.nl>
+Date: Fri, 10 May 2024 15:57:45 +0200
+Subject: [PATCH 2/2] Customized debian rules file
+
+---
+ debian/rules.em | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/debian/rules.em b/debian/rules.em
+index 9a1d622..7583112 100755
+--- a/debian/rules.em
++++ b/debian/rules.em
+@@ -37,7 +37,7 @@ override_dh_auto_configure:
+ 	dh_auto_configure -- \
+ 		-DCMAKE_INSTALL_PREFIX="@(InstallationPrefix)" \
+ 		-DCMAKE_PREFIX_PATH="@(InstallationPrefix)" \
+-                -DFETCHCONTENT_FULLY_DISCONNECTED=OFF \
++		-DFETCHCONTENT_FULLY_DISCONNECTED=OFF \
+ 		$(BUILD_TESTING_ARG)
+ 
+ override_dh_auto_build:
+-- 
+2.34.1
+
