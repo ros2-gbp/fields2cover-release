@@ -15,15 +15,17 @@
   <license>BSD-3</license>
 
   <buildtool_depend>cmake</buildtool_depend>
+  <depend>boost</depend>
   <depend>eigen</depend>
   <depend>git</depend>
   <depend>libgdal-dev</depend>
   <depend>gtest</depend>
   <depend>tbb</depend>
-  <depend>tinyxml2</depend>
   <depend>python3</depend>
   <depend>python3-dev</depend>
-  <depend>ortools_vendor</depend>
+  <depend>tinyxml2</depend>
+  <depend>libabsl-dev</depend>
+  <depend>protobuf-dev</depend>
   <exec_depend>python3-matplotlib</exec_depend>
   <exec_depend>python3-tk</exec_depend>
   <test_depend>gtest</test_depend>
