@@ -6,7 +6,7 @@ file(
 )
 file(
   GLOB_RECURSE TEST_SOURCES
-  LIST_DIRECTORIES false unittests.cpp cpp/*/*.cpp
+  LIST_DIRECTORIES false unittests.cpp cpp/*/*.cpp cpp/*/*/*.cpp
 )
 
 add_executable(unittests ${TEST_SOURCES})
@@ -35,7 +35,6 @@ add_test(
   WORKING_DIRECTORY ${UNIT_TEST_BIN_OUTPUT_DIR}
 )
 add_dependencies(check unittests)
-
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(GCOVR_ADDITIONAL_ARGS
