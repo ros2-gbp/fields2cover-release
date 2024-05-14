@@ -1,4 +1,4 @@
-From 56e675afa6f30253976530633768afdf196f7a11 Mon Sep 17 00:00:00 2001
+From 688f80e07adf45e6a541ba2c2b37eb70da4d9fb8 Mon Sep 17 00:00:00 2001
 From: Gonzalo-Mier <gonzalo.miermunoz@wur.nl>
 Date: Fri, 10 May 2024 15:57:45 +0200
 Subject: [PATCH 2/2] Customized debian rules file
