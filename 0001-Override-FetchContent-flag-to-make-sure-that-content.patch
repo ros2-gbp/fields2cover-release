@@ -1,4 +1,4 @@
-From bc22a56a800165006d6f28e6171b58c5eb07a3a6 Mon Sep 17 00:00:00 2001
+From bfa411e6dd5b2afd6a8b1bc645629e8f9a95faeb Mon Sep 17 00:00:00 2001
 From: Gonzalo Mier <gonzalo.miermunoz@wur.nl>
 Date: Fri, 10 May 2024 15:49:07 +0200
 Subject: [PATCH 1/2] Override FetchContent flag to make sure that content is
