@@ -1,4 +1,4 @@
-From 9b53ecf1974b6df3ea0a344e2f334fe30d143417 Mon Sep 17 00:00:00 2001
+From a3b4b9a588fe697b7d8604d8255078d2547529ba Mon Sep 17 00:00:00 2001
 From: Gonzalo-Mier <gonzalo.miermunoz@wur.nl>
 Date: Fri, 10 May 2024 15:57:45 +0200
 Subject: [PATCH 2/2] Customized debian rules file
@@ -8,7 +8,7 @@ Subject: [PATCH 2/2] Customized debian rules file
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/debian/rules.em b/debian/rules.em
-index 9a1d622..7583112 100755
+index 9a1d622408aa..758311299812 100755
 --- a/debian/rules.em
 +++ b/debian/rules.em
 @@ -37,7 +37,7 @@ override_dh_auto_configure:
@@ -21,5 +21,5 @@ index 9a1d622..7583112 100755
  
  override_dh_auto_build:
 -- 
-2.34.1
+2.49.0
 
