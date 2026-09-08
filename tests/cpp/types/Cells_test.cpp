@@ -5,7 +5,12 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
+#include <algorithm>
+#include <cmath>
+#include <vector>
 #include "fields2cover/types.h"
+#include "fields2cover/headland_generator/constant_headland.h"
+#include "fields2cover/decomposition/trapezoidal_decomp.h"
 
 TEST(fields2cover_types_cells, constructor) {
   F2CLinearRing ring1{
@@ -145,6 +150,19 @@ TEST(fields2cover_types_cells, WherePoint) {
   EXPECT_EQ(cells.getCellWherePoint(F2CPoint(11, 11)).area(), 6);
 }
 
+TEST(fields2cover_types_cells, getCellWherePointWithTolerance) {
+  F2CCells cells {
+    F2CCell(F2CLinearRing({
+          F2CPoint(0,0), F2CPoint(2,0),F2CPoint(2,2),F2CPoint(0,2), F2CPoint(0,0)
+    }))
+  };
+  F2CPoint just_outside {2 + 1e-9, 1};
+
+  EXPECT_EQ(cells.getCellWherePoint(just_outside).area(), 0);
+  EXPECT_EQ(cells.getCellWherePoint(just_outside, 1e-6).area(), 4);
+  EXPECT_EQ(cells.getCellWherePoint(F2CPoint(5, 5), 1e-6).area(), 0);
+}
+
 TEST(fields2cover_types_cells, setGeometry) {
   F2CLinearRing line {
     F2CPoint(0,0), F2CPoint(2,0), F2CPoint(2,2), F2CPoint(0,2), F2CPoint(0,0)};
@@ -189,11 +207,16 @@ TEST(fields2cover_types_cells, splitByLine) {
   lines.setGeometry(1, line2);
 
   F2CCells split_cells = cells.splitByLine(lines);
-  EXPECT_NEAR(split_cells.size(), 4, 1e-7);
-  EXPECT_NEAR(split_cells.getGeometry(0).area(), 9, 1e-7);
-  EXPECT_NEAR(split_cells.getGeometry(1).area(), 3, 1e-7);
-  EXPECT_NEAR(split_cells.getGeometry(2).area(), 2, 1e-7);
-  EXPECT_NEAR(split_cells.getGeometry(3).area(), 6, 1e-7);
+  ASSERT_EQ(split_cells.size(), 4);
+  // Cutting both lines at once instead of one after the other does not
+  // promise an order, only which four pieces come out.
+  std::vector<double> areas;
+  for (auto&& c : split_cells) { areas.push_back(c.area()); }
+  std::sort(areas.begin(), areas.end());
+  EXPECT_NEAR(areas[0], 2, 1e-7);
+  EXPECT_NEAR(areas[1], 3, 1e-7);
+  EXPECT_NEAR(areas[2], 6, 1e-7);
+  EXPECT_NEAR(areas[3], 9, 1e-7);
 }
 
 TEST(fields2cover_types_cells, isPointIn) {
@@ -210,3 +233,30 @@ TEST(fields2cover_types_cells, isPointIn) {
 }
 
 
+
+TEST(fields2cover_types_cells, degenerateCellDoesNotCrash) {
+  // An empty polygon has no exterior ring. Asking for its border used to
+  // dereference that null ring.
+  F2CCells cells;
+  cells.addGeometry(F2CCell());
+  EXPECT_EQ(cells.size(), 0);
+
+  EXPECT_EQ(cells.getCellBorder(0).size(), 0);
+  EXPECT_EQ(cells.getInteriorRing(0, 0).size(), 0);
+}
+
+TEST(fields2cover_types_cells, outOfRangeAccessThrows) {
+  F2CCells cells {
+    F2CCell(F2CLinearRing({
+          F2CPoint(0,0), F2CPoint(1,0), F2CPoint(1,1), F2CPoint(0,0)
+    }))
+  };
+  EXPECT_EQ(cells.getCellBorder(0).size(), 4);
+
+  EXPECT_THROW(cells.getCellBorder(99), std::out_of_range);
+  EXPECT_THROW(cells.getInteriorRing(99, 0), std::out_of_range);
+  EXPECT_THROW(cells.addRing(99, cells.getCellBorder(0)), std::out_of_range);
+
+  F2CCells empty;
+  EXPECT_THROW(empty.getCellBorder(0), std::out_of_range);
+}
