@@ -5,13 +5,16 @@
 //=============================================================================
 
 #include <numeric>
+#include <algorithm>
 #include "fields2cover/types/Graph.h"
 
 namespace f2c::types {
 
 Graph& Graph::addDirectedEdge(size_t from, size_t to, int64_t cost) {
   this->edges_[from][to] =  cost;
-  if (this->shortest_paths_.size() > 0) {
+  if (!this->next_.empty() || !this->distance_.empty()) {
+    this->next_.clear();
+    this->distance_.clear();
     this->shortest_paths_.clear();
   }
   return *this;
@@ -33,8 +36,30 @@ Graph& Graph::removeEdge(size_t i, size_t j) {
   return this->removeDirectedEdge(i, j).removeDirectedEdge(j, i);
 }
 
+std::unordered_set<size_t> Graph::getNodes() const {
+  std::unordered_set<size_t> nodes;
+  for (const auto& from : this->edges_) {
+    nodes.insert(from.first);
+    for (const auto& to : from.second) {
+      nodes.insert(to.first);
+    }
+  }
+  return nodes;
+}
+
 size_t Graph::numNodes() const {
-  return this->edges_.size();
+  return this->getNodes().size();
+}
+
+size_t Graph::matrixSize() const {
+  size_t size = 0;
+  for (const auto& from : this->edges_) {
+    size = std::max(size, from.first + 1);
+    for (const auto& to : from.second) {
+      size = std::max(size, to.first + 1);
+    }
+  }
+  return size;
 }
 
 size_t Graph::numEdges() const {
@@ -66,7 +91,7 @@ int64_t Graph::getCostFromEdge(size_t from, size_t to, int64_t INF) const {
 
 std::vector<std::vector<size_t>> Graph::allPathsBetween(
     size_t from, size_t to) const {
-  std::vector<bool> visited(this->numNodes(), false);
+  std::vector<bool> visited(this->matrixSize(), false);
   std::vector<std::vector<size_t>> routes(1);
   int route_index = 0;
   this->DFS(from, to, routes, visited, route_index);
@@ -96,12 +121,19 @@ void Graph::DFS(
   }
 }
 
-std::vector<std::vector<pair_vec_size__int>>
-    Graph::shortestPathsAndCosts(int64_t INF) {
-  const size_t N = this->numNodes();
-  std::vector<std::vector<int64_t>> dist(N, std::vector<int64_t>(N, INF));
-  std::vector<std::vector<int64_t>> next(N, std::vector<int64_t>(N, -1));
+void  Graph::shortestPathsAndCosts(int64_t INF) {
+  const size_t N = this->matrixSize();
+  this->distance_.assign(N, std::vector<int64_t>(N, INF));
+  this->next_.assign(N, std::vector<int64_t>(N, -1));
+  initializeMatrices(distance_,next_, INF);
+}
 
+
+void Graph::initializeMatrices(std::vector<std::vector<int64_t>>& dist,
+    std::vector<std::vector<int64_t>>& next,
+    int64_t INF) {
+
+  const size_t N = this->matrixSize();
 
   // Initialize distances and paths for direct connections
   for (const auto& src : this->edges_) {
@@ -120,48 +152,86 @@ std::vector<std::vector<pair_vec_size__int>>
         if (dist[i][k] < INF && \
             dist[k][j] < INF && \
             dist[i][j] > dist[i][k] + dist[k][j]) {
-          dist[i][j] = dist[i][k] + dist[k][j];
-          next[i][j] = next[i][k];
+            dist[i][j] = dist[i][k] + dist[k][j];
+            next[i][j] = next[i][k];
         }
       }
     }
   }
 
-
   // Reconstruct paths
-  std::vector<std::vector<pair_vec_size__int>>
-      paths(N, std::vector<pair_vec_size__int>(N));
   for (size_t i = 0; i < N; ++i) {
     for (size_t j = 0; j < N; ++j) {
       if (i != j && next[i][j] != -1) {
-        std::vector<size_t> path = {i};
         size_t current = i;
         while (current != j) {
           current = next[current][j];
-          path.push_back(current);
         }
-        paths[i][j] = std::make_pair(path, dist[i][j]);
       } else if (i != j && next[i][j] == -1) {
-        paths[i][j].second = INF;
+        dist[i][j] = INF;
       }
     }
   }
-  this->shortest_paths_ = std::move(paths);
+}
+
+std::vector<std::vector<int64_t>>& Graph::getCosts() {
+  if (this->distance_.empty()) {
+    this->shortestPathsAndCosts();
+  }
+  return this->distance_;
+}
+
+short_path_container_t& Graph::getPaths() {
+  if (next_.empty()) {
+    this->shortestPathsAndCosts();
+  }
+  if (shortest_paths_.empty()) {
+    const size_t N = this->matrixSize();
+    shortest_paths_.assign(N, std::vector<std::vector<size_t>>(N));
+    for (size_t i = 0; i < N; ++i) {
+      for (size_t j = 0; j < N; ++j) {
+        if (i != j && next_[i][j] != -1) {
+          std::vector<size_t> path = {i};
+          size_t current = i;
+          while (current != j) {
+            current = next_[current][j];
+            path.push_back(current);
+          }
+          shortest_paths_[i][j] = path;
+        }
+      }
+    }
+  }
   return this->shortest_paths_;
 }
 
 std::vector<size_t> Graph::shortestPath(size_t from, size_t to, int64_t INF) {
-  if (this->numNodes() > 0 && this->shortest_paths_.size() == 0) {
+  if (!this->edges_.empty() && (this->next_.empty() || this->distance_.empty())) {
     this->shortestPathsAndCosts(INF);
   }
-  return this->shortest_paths_[from][to].first;
+  return this->reconstructPath(from, to, next_);
+}
+
+std::vector<size_t> Graph::reconstructPath(size_t from,
+    size_t to, std::vector<std::vector<int64_t>>& next) const {
+  if (from != to && next[from][to] != -1) {
+    std::vector<size_t> path = {from};
+    size_t current = from;
+    while (current != to) {
+      current = next[current][to];
+      path.push_back(current);
+    }
+    return path;
+  } else {
+    return {};
+  }
 }
 
 int64_t Graph::shortestPathCost(size_t from, size_t to, int64_t INF) {
-  if (this->numNodes() > 0 && this->shortest_paths_.size() == 0) {
+  if (!this->edges_.empty() && this->distance_.size() == 0) {
     this->shortestPathsAndCosts(INF);
   }
-  return this->shortest_paths_[from][to].second;
+  return this->distance_[from][to];
 }
 
 }  // namespace f2c::types
