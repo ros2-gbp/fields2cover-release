@@ -8,7 +8,7 @@
 #ifndef FIELDS2COVER_TYPES_LINESTRING_H_
 #define FIELDS2COVER_TYPES_LINESTRING_H_
 
-#include <gdal/ogr_geometry.h>
+#include <ogr_geometry.h>
 #include <vector>
 #include "fields2cover/types/Geometries.h"
 #include "fields2cover/types/Point.h"
@@ -37,6 +37,9 @@ struct LineString : public Geometries<LineString, OGRLineString, wkbLineString,
   double length() const;
   void reversePoints();
   size_t size() const;
+
+  /// Copy of the points, in order.
+  std::vector<Point> toVectorPoint() const;
 
   void getGeometry(size_t i, Point& point);
   void getGeometry(size_t i, Point& point) const;
