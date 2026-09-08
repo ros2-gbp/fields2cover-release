@@ -114,11 +114,21 @@ const Cell Cells::getCell(size_t i) const {
 }
 
 const LinearRing Cells::getCellBorder(size_t i) const {
+  // Check the index before asking OGR: getGeometryRef() dereferences a null
+  // collection entry when the index is out of range.
+  if (i >= static_cast<size_t>(this->data_->getNumGeometries())) {
+    throw std::out_of_range(
+        "Cells does not contain cell at " + std::to_string(i));
+  }
   return LinearRing(
       downCast<OGRPolygon*>(this->data_->getGeometryRef(i))->getExteriorRing());
 }
 
 const LinearRing Cells::getInteriorRing(size_t i_cell, size_t i_ring) const {
+  if (i_cell >= static_cast<size_t>(this->data_->getNumGeometries())) {
+    throw std::out_of_range(
+        "Cells does not contain cell at " + std::to_string(i_cell));
+  }
   return LinearRing(downCast<OGRPolygon*>(this->data_->getGeometryRef(i_cell))
       ->getInteriorRing(i_ring));
 }
@@ -128,6 +138,10 @@ void Cells::addGeometry(const Cell& c) {
 }
 
 void Cells::addRing(size_t i, const LinearRing& ring) {
+  if (i >= static_cast<size_t>(this->data_->getNumGeometries())) {
+    throw std::out_of_range(
+        "Cells does not contain cell at " + std::to_string(i));
+  }
   downCast<OGRPolygon*>(this->data_->getGeometryRef(i))->addRing(
       ring.clone().get());
 }
@@ -177,20 +191,32 @@ Cells Cells::unionCascaded() const {
   return destroyResGeom<Cells>(this->data_->UnionCascaded());
 }
 
-Cells Cells::splitByLine(const LineString& line) const {
-  Cells cells = this->difference(this->buffer(line, 1e-8));
-  for (auto&& c : cells) {
-    c = Cell::buffer(c, 1e-8 * 0.5);
+namespace {
+// The cut takes a 1e-8-wide strip out of the field, so each piece is
+// reinflated by half that to keep the total size the same. Two chained
+// cut-reinflate passes let GEOS collapse the second cut into a no-op, so
+// every split line is buffered together into a single pass. A reinflated
+// piece can also come out pinched into two, which Cell::buffer can't hold;
+// collect into a fresh Cells instead.
+template <class T, OGRwkbGeometryType R>
+Cells splitCellsByGeom(const Cells& self, const Geometry<T, R>& geom) {
+  Cells raw = self.difference(self.buffer(geom, 1e-8));
+  Cells cells;
+  for (auto&& c : raw) {
+    for (auto&& piece : Cells::buffer(c, 1e-8 * 0.5)) {
+      cells.addGeometry(piece);
+    }
   }
   return cells;
 }
+}  // namespace
+
+Cells Cells::splitByLine(const LineString& line) const {
+  return splitCellsByGeom(*this, line);
+}
 
 Cells Cells::splitByLine(const MultiLineString& lines) const {
-  Cells cells{*this};
-  for (auto&& line : lines) {
-    cells = cells.splitByLine(line);
-  }
-  return cells;
+  return splitCellsByGeom(*this, lines);
 }
 
 LineString Cells::createSemiLongLine(const Point& point, double angle) const {
@@ -228,6 +254,15 @@ bool Cells::isPointIn(const Point& p) const {
 const Cell Cells::getCellWherePoint(const Point& p) const {
   for (auto&& cell : *this) {
     if (p.touches(cell) || p.within(cell)) {
+      return cell;
+    }
+  }
+  return Cell();
+}
+
+const Cell Cells::getCellWherePoint(const Point& p, double d_tol) const {
+  for (auto&& cell : *this) {
+    if (p.distance(cell) <= d_tol) {
       return cell;
     }
   }
