@@ -8,7 +8,9 @@
 #ifndef FIELDS2COVER_TYPES_POINT_H_
 #define FIELDS2COVER_TYPES_POINT_H_
 
-#include <gdal/ogr_geometry.h>
+#include <ogr_geometry.h>
+#include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <functional>
 #include <memory>
@@ -20,7 +22,10 @@ namespace f2c::types {
 
 struct Point : public Geometry<OGRPoint, wkbPoint> {
  public:
+  // Hidden from SWIG, which would also wrap the base copy/move constructors.
+#ifndef SWIG
   using Geometry<OGRPoint, wkbPoint>::Geometry;
+#endif
   Point();
   Point(double x, double y, double z = 0);
   Point(const Point&);
@@ -73,6 +78,9 @@ struct Point : public Geometry<OGRPoint, wkbPoint> {
   static double getAngleFromPoints(
       const Point& p1, const Point& p2, const Point& p3);
   Point getPointFromAngle(double angle, double dist) const;
+  /// Point at a distance along the ray towards another point.
+  /// Returns this point if both coincide, as no direction is defined then.
+  Point getPointAlong(const Point& to, double dist) const;
 
   Point rotateFromPoint(double angle, const Point& p_r) const;
 
@@ -183,7 +191,18 @@ namespace std {
 template<>
 struct hash<f2c::types::Point> {
   inline size_t operator()(const f2c::types::Point& p) const {
-    return size_t(p.getX() + p.getY() * 1e10 + p.getZ() * 1e20);
+    // Quantized to the tolerance of Point::operator==, so that points which
+    // compare equal share a value. Coordinates are hashed, not summed:
+    // the sum overflows to undefined behaviour on negative coordinates.
+    const int64_t coords[3] {
+      std::llround(p.getX() * 1e7),
+      std::llround(p.getY() * 1e7),
+      std::llround(p.getZ() * 1e7)};
+    size_t h {1469598103934665603ULL};
+    for (auto&& c : coords) {
+      h = (h ^ static_cast<size_t>(c)) * 1099511628211ULL;
+    }
+    return h;
   }
 };
 }
