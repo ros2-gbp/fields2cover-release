@@ -8,7 +8,7 @@
 #ifndef FIELDS2COVER_TYPES_GEOMETRY_IMPL_HPP_
 #define FIELDS2COVER_TYPES_GEOMETRY_IMPL_HPP_
 
-#include <gdal/cpl_conv.h>
+#include <cpl_conv.h>
 #include <geos_c.h>
 #include <memory>
 #include <vector>
@@ -33,7 +33,8 @@ template <class T, OGRwkbGeometryType R>
 Geometry<T, R>::Geometry(T* g, EmptyDestructor) : data_(g, [](T* f) {}) {}
 
 template <class T, OGRwkbGeometryType R>
-Geometry<T, R>::Geometry(const T* g) : data_(downCast<T*>(g->clone()),
+Geometry<T, R>::Geometry(const T* g) : data_(
+  downCast<T*>(g ? g->clone() : OGRGeometryFactory::createGeometry(R)),
   [](T* f) {OGRGeometryFactory::destroyGeometry(f);}) {}
 
 template <class T, OGRwkbGeometryType R>
@@ -41,7 +42,8 @@ Geometry<T, R>::Geometry(OGRGeometry* g, EmptyDestructor) :
   data_(downCast<T*>(g), [](T* f) {}) {}
 
 template <class T, OGRwkbGeometryType R>
-Geometry<T, R>::Geometry(const OGRGeometry* g) : data_(downCast<T*>(g->clone()),
+Geometry<T, R>::Geometry(const OGRGeometry* g) : data_(
+  downCast<T*>(g ? g->clone() : OGRGeometryFactory::createGeometry(R)),
   [](T* f) {OGRGeometryFactory::destroyGeometry(f);}) {}
 
 template <class T, OGRwkbGeometryType R>
@@ -54,11 +56,11 @@ template <class T, OGRwkbGeometryType R>
 Geometry<T, R>::Geometry(Geometry&& g) = default;
 
 template <class T, OGRwkbGeometryType R>
-typename Geometry<T, R>::Geometry& Geometry<T, R>::operator=(
+Geometry<T, R>& Geometry<T, R>::operator=(
     Geometry&& g) = default;
 
 template <class T, OGRwkbGeometryType R>
-typename Geometry<T, R>::Geometry& Geometry<T, R>::operator=(
+Geometry<T, R>& Geometry<T, R>::operator=(
     const Geometry& g) = default;
 
 template <class T, OGRwkbGeometryType R>
@@ -162,6 +164,12 @@ template <class T, OGRwkbGeometryType R>
 template <class T2, OGRwkbGeometryType R2>
 bool Geometry<T, R>::within(const Geometry<T2, R2>& geom) const {
   return data_->Within(geom.get());
+}
+
+template <class T, OGRwkbGeometryType R>
+template <class T2, OGRwkbGeometryType R2>
+bool Geometry<T, R>::contains(const Geometry<T2, R2>& geom) const {
+  return data_->Contains(geom.get());
 }
 
 template <class T, OGRwkbGeometryType R>
