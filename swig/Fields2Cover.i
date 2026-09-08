@@ -12,8 +12,6 @@
  %include <exception.i>
  %include <std_pair.i>
 
-#define __version__ "2.0.0"
-
 %inline %{
   #include "fields2cover.h"
 %}
@@ -54,6 +52,7 @@ DEFINE_GEOM_ALGS(disjoint)
 DEFINE_GEOM_ALGS(crosses)
 DEFINE_GEOM_ALGS(touches)
 DEFINE_GEOM_ALGS(within)
+DEFINE_GEOM_ALGS(contains)
 DEFINE_GEOM_ALGS(intersects)
 %template(GeomPoint) f2c::types::Geometry<OGRPoint, wkbPoint>;
 %template(GeomMultiPoint) f2c::types::Geometry<OGRMultiPoint, wkbMultiPoint>;
@@ -285,8 +284,17 @@ DEFINE_PP_COSTS(BaseObjective<f2c::obj::PPObjective>, computeCostWithMinimizingS
 %template(OBJ_CompleteTurnPathObj_ReedsSheppHC) f2c::obj::CompleteTurnPathObj<f2c::pp::ReedsSheppCurvesHC>;
 
 %include "fields2cover/headland_generator/headland_generator_base.h"
+// The generators pull the base overloads in with a using declaration,
+// which swig reads as an inherited pure virtual.
+%feature("notabstract") f2c::hg::ConstHL;
+%feature("notabstract") f2c::hg::CorridorHL;
+%feature("notabstract") f2c::hg::ReqHL;
 %rename(HG_Const_gen) f2c::hg::ConstHL;
 %include "fields2cover/headland_generator/constant_headland.h"
+%rename(HG_Corridor_gen) f2c::hg::CorridorHL;
+%include "fields2cover/headland_generator/corridor_headland.h"
+%rename(HG_Req_gen) f2c::hg::ReqHL;
+%include "fields2cover/headland_generator/required_headland.h"
 
 
 %include "fields2cover/swath_generator/swath_generator_base.h"
@@ -319,8 +327,8 @@ DEFINE_PP_COSTS(BaseObjective<f2c::obj::PPObjective>, computeCostWithMinimizingS
 %template(LongLongVector) std::vector<long long int>;
 
 
-%ignore f2c::rp::RoutePlannerBase::createShortestGraph;
-%ignore f2c::rp::RoutePlannerBase::createCoverageGraph;
+// %ignore f2c::rp::RoutePlannerBase::createShortestGraph;
+// %ignore f2c::rp::RoutePlannerBase::createCoverageGraph;
 %rename(RP_RoutePlannerBase) f2c::rp::RoutePlannerBase;
 %include "fields2cover/route_planning/route_planner_base.h"
 
