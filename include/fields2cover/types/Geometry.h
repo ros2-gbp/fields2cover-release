@@ -8,8 +8,8 @@
 #ifndef FIELDS2COVER_TYPES_GEOMETRY_H_
 #define FIELDS2COVER_TYPES_GEOMETRY_H_
 
-#include <gdal/ogr_geometry.h>
-#include <gdal/ogr_core.h>
+#include <ogr_geometry.h>
+#include <ogr_core.h>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -90,6 +90,10 @@ struct Geometry {
   /// Check if this geometry is inside another geometry.
   template <class T2, OGRwkbGeometryType R2>
   bool within(const Geometry<T2, R2>& geom) const;
+
+  /// Check if this geometry contains another geometry.
+  template <class T2, OGRwkbGeometryType R2>
+  bool contains(const Geometry<T2, R2>& geom) const;
 
   /// Check if this and another geometry intersects.
   template <class T2, OGRwkbGeometryType R2>

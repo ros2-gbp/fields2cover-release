@@ -8,7 +8,7 @@
 #ifndef FIELDS2COVER_TYPES_CELLS_H_
 #define FIELDS2COVER_TYPES_CELLS_H_
 
-#include <gdal/ogr_geometry.h>
+#include <ogr_geometry.h>
 #include <vector>
 #include "fields2cover/types/Geometry.h"
 #include "fields2cover/types/Geometries.h"
@@ -80,6 +80,10 @@ struct Cells : public Geometries<Cells, OGRMultiPolygon, wkbMultiPolygon,
   bool isPointIn(const Point& p) const;
 
   const Cell getCellWherePoint(const Point& p) const;
+
+  /// Get the cell a point belongs to, allowing the point to sit up to
+  /// d_tol outside it. Returns an empty cell if no cell is that close.
+  const Cell getCellWherePoint(const Point& p, double d_tol) const;
 
   LineString createLineUntilBorder(
       const f2c::types::Point& p, double ang) const;
