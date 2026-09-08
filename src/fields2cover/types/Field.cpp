@@ -99,7 +99,7 @@ std::string Field::getUTMCoordSystem(
     const std::string& coord_sys, const std::string& if_not_found) {
   std::smatch match;
   if (std::regex_search(coord_sys, match,
-        std::regex("UTM[^0-9A-Za-z]*(\\d++\\w)[^\\w]*"))) {
+        std::regex("UTM[^0-9A-Za-z]*(\\d+\\w)[^\\w]*"))) {
     return match.str(1);
   }
   return if_not_found;
@@ -162,7 +162,11 @@ Cells Field::getCellsAbsPosition() const {
 }
 
 std::string Field::getUTMZone(const std::string& coord_sys) {
-  return getUTMCoordSystem(coord_sys).substr(0, 2);
+  const std::string utm_coord_system {getUTMCoordSystem(coord_sys)};
+  if (utm_coord_system.empty()) {
+    return "";
+  }
+  return utm_coord_system.substr(0, utm_coord_system.size() - 1);
 }
 
 std::string Field::getUTMZone() const {
@@ -170,7 +174,9 @@ std::string Field::getUTMZone() const {
 }
 
 std::string Field::getUTMHemisphere(const std::string& coord_sys) {
-  std::string hemisphere {getUTMCoordSystem(coord_sys).substr(2, 1)};
+  const std::string utm_coord_system {getUTMCoordSystem(coord_sys)};
+  const std::string hemisphere {utm_coord_system.empty() ? "" :
+    utm_coord_system.substr(utm_coord_system.size() - 1)};
   if (hemisphere == "n" || hemisphere == "N") {
     return "+north";
   } else if (hemisphere == "s" || hemisphere == "S") {
@@ -185,4 +191,3 @@ std::string Field::getUTMHemisphere() const {
 }
 
 }  // namespace f2c::types
-

@@ -8,7 +8,7 @@
 #ifndef FIELDS2COVER_TYPES_MULTIPOINT_H_
 #define FIELDS2COVER_TYPES_MULTIPOINT_H_
 
-#include <gdal/ogr_geometry.h>
+#include <ogr_geometry.h>
 #include <vector>
 #include "fields2cover/types/Geometries.h"
 #include "fields2cover/types/Point.h"
@@ -24,6 +24,9 @@ struct MultiPoint :
   explicit MultiPoint(const std::initializer_list<Point>& ps);
 
   size_t size() const;
+
+  /// Copy of the points, in order.
+  std::vector<Point> toVectorPoint() const;
 
   void getGeometry(size_t i, Point& point);
 
