@@ -20,13 +20,15 @@ namespace ortools = operations_research;
 
 F2CRoute RoutePlannerBase::genRoute(
     const F2CCells& cells, const F2CSwathsByCells& swaths,
-    bool show_log, double d_tol, bool redirect_swaths) {
+    bool show_log, double d_tol, bool redirect_swaths,
+    long int time_limit_seconds, bool search_for_optimum) {
   F2CGraph2D shortest_graph = createShortestGraph(cells, swaths, d_tol);
 
   F2CGraph2D cov_graph = createCoverageGraph(
       cells, swaths, shortest_graph, d_tol, redirect_swaths);
 
-  std::vector<int64_t> v_route = computeBestRoute(cov_graph, show_log);
+  std::vector<long long int> v_route = computeBestRoute(
+      cov_graph, show_log, time_limit_seconds, search_for_optimum);
   return transformSolutionToRoute(
       v_route, swaths, cov_graph, shortest_graph);
 }
@@ -39,11 +41,19 @@ F2CGraph2D RoutePlannerBase::createShortestGraph(
     const F2CCells& cells, const F2CSwathsByCells& swaths_by_cells,
     double d_tol) const {
   F2CGraph2D g;
-  // Add points from swaths that touches border
+  // Connect each swath end to the border of the cell it belongs to. An end
+  // outside every cell is left out: a line to the nearest border would cross
+  // whatever lies between.
+  auto addBorderEdge = [&g, &cells, d_tol] (const F2CPoint& p) {
+    F2CCell cell = cells.getCellWherePoint(p, d_tol);
+    if (!cell.isEmpty()) {
+      g.addEdge(p, cell.closestPointOnBorderTo(p));
+    }
+  };
   for (auto&& swaths : swaths_by_cells) {
     for (auto&& s : swaths) {
-      g.addEdge(s.startPoint(), cells.closestPointOnBorderTo(s.startPoint()));
-      g.addEdge(s.endPoint(),   cells.closestPointOnBorderTo(s.endPoint()));
+      addBorderEdge(s.startPoint());
+      addBorderEdge(s.endPoint());
     }
   }
 
@@ -56,7 +66,8 @@ F2CGraph2D RoutePlannerBase::createShortestGraph(
     }
   }
 
-  // Add start and end point if they exists
+  // Add start and end point if they exists. Unlike a swath end, this point
+  // is allowed to sit outside the field, so it always gets its border edge.
   if (this->r_start_end) {
     g.addEdge(*r_start_end, cells.closestPointOnBorderTo(*r_start_end));
   }
@@ -144,15 +155,16 @@ F2CGraph2D RoutePlannerBase::createCoverageGraph(
   return g;
 }
 
-std::vector<int64_t> RoutePlannerBase::computeBestRoute(
-    const F2CGraph2D& cov_graph, bool show_log) const {
+std::vector<long long int> RoutePlannerBase::computeBestRoute(
+    const F2CGraph2D& cov_graph, bool show_log, long int time_limit_seconds,
+    bool use_guided_local_search) const {
   int depot_id = static_cast<int>(cov_graph.numNodes()-1);
   const ortools::RoutingIndexManager::NodeIndex depot{depot_id};
   ortools::RoutingIndexManager manager(cov_graph.numNodes(), 1, depot);
   ortools::RoutingModel routing(manager);
 
   const int transit_callback_index = routing.RegisterTransitCallback(
-      [&cov_graph, &manager] (int64_t from, int64_t to) -> int64_t {
+      [&cov_graph, &manager] (long long int from, long long int to) -> long long int {
         auto from_node = manager.IndexToNode(from).value();
         auto to_node = manager.IndexToNode(to).value();
         return cov_graph.getCostFromEdge(from_node, to_node);
@@ -163,19 +175,23 @@ std::vector<int64_t> RoutePlannerBase::computeBestRoute(
   searchParameters.set_use_full_propagation(false);
   searchParameters.set_first_solution_strategy(
     ortools::FirstSolutionStrategy::AUTOMATIC);
-  //  searchParameters.set_local_search_metaheuristic(
-  //   ortools::LocalSearchMetaheuristic::GUIDED_LOCAL_SEARCH);
-  searchParameters.set_local_search_metaheuristic(
-    ortools::LocalSearchMetaheuristic::AUTOMATIC);
-  searchParameters.mutable_time_limit()->set_seconds(1);
+  if (use_guided_local_search) {
+    searchParameters.set_local_search_metaheuristic(
+      ortools::LocalSearchMetaheuristic::GUIDED_LOCAL_SEARCH);
+  } else {
+    searchParameters.set_local_search_metaheuristic(
+      ortools::LocalSearchMetaheuristic::AUTOMATIC);
+  }
+  searchParameters.mutable_time_limit()->set_seconds(time_limit_seconds);
   searchParameters.set_log_search(show_log);
   const ortools::Assignment* solution =
     routing.SolveWithParameters(searchParameters);
 
-  int64_t index = routing.Start(0);
-  std::vector<int64_t> v_id;
+  long long int index = routing.Start(0);
+  std::vector<long long int> v_id;
 
   index = solution->Value(routing.NextVar(index));
+
   while (!routing.IsEnd(index)) {
     v_id.emplace_back(manager.IndexToNode(index).value());
     index = solution->Value(routing.NextVar(index));
@@ -184,12 +200,11 @@ std::vector<int64_t> RoutePlannerBase::computeBestRoute(
 }
 
 F2CRoute RoutePlannerBase::transformSolutionToRoute(
-    const std::vector<int64_t>& route_ids,
+    const std::vector<long long int>& route_ids,
     const F2CSwathsByCells& swaths_by_cells,
     const F2CGraph2D& coverage_graph,
     F2CGraph2D& shortest_graph) const {
   F2CRoute route;
-  F2CSwath swath;
   const size_t NS = swaths_by_cells.sizeTotal();
   for (int i = 0; i < route_ids.size()-2; ++i) {
     F2CPoint p_s = coverage_graph.indexToNode(route_ids[i]);
