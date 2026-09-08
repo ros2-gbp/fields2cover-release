@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.12.4...3.22)
 
 project(Fields2Cover
-  VERSION 2.0.0
+  VERSION 2.1.0
   DESCRIPTION "Fields2Cover is a complete coverage path planning package for autonomous robots"
   HOMEPAGE_URL "http://fields2cover.github.io"
   LANGUAGES CXX
@@ -53,6 +53,16 @@ find_package(GDAL 3.0 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_library(MATH_LIBRARY m)
 
+# Prefer the imported target from GEOS' CMake config (available since GEOS 3.8);
+# fall back to the bare linker flag for distros that don't ship the config.
+find_package(GEOS CONFIG QUIET)
+set(F2C_GEOS_FROM_CONFIG ${GEOS_FOUND})  # consumed by Fields2CoverConfig.cmake.in
+if(GEOS_FOUND)
+  set(F2C_GEOS_C_LIBRARY GEOS::geos_c)
+else()
+  set(F2C_GEOS_C_LIBRARY -lgeos_c)
+endif()
+
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -81,7 +91,7 @@ target_link_libraries(Fields2Cover
   PUBLIC
     GDAL::GDAL
     ${CMAKE_THREAD_LIBS_INIT}
-    -lgeos_c
+    ${F2C_GEOS_C_LIBRARY}
     ${MATH_LIBRARY}
   PRIVATE
     ortools::ortools
@@ -92,7 +102,15 @@ target_link_libraries(Fields2Cover
 )
 
 if(ALLOW_PARALLELIZATION)
-  target_link_libraries(Fields2Cover PRIVATE tbb)
+  # Prefer the imported target from oneTBB's CMake config; fall back to the
+  # bare library name for distros that don't ship the config.
+  find_package(TBB CONFIG QUIET)
+  set(F2C_TBB_FROM_CONFIG ${TBB_FOUND})  # consumed by Fields2CoverConfig.cmake.in
+  if(TBB_FOUND)
+    target_link_libraries(Fields2Cover PRIVATE TBB::tbb)
+  else()
+    target_link_libraries(Fields2Cover PRIVATE tbb)
+  endif()
 endif(ALLOW_PARALLELIZATION)
 
 
@@ -118,31 +136,35 @@ install(DIRECTORY include/
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-include(CMakePackageConfigHelpers)
-configure_package_config_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Fields2CoverConfig.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/Fields2CoverConfig.cmake
-  INSTALL_DESTINATION ${F2C_INSTALL_CMAKEDIR}
-  PATH_VARS CMAKE_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR
-)
+# Wheels install only COMPONENT python, and with BUILD_SHARED_LIBS=OFF the
+# export set would miss Fields2Cover's private deps (nlohmann_json, matplot).
+if(NOT DEFINED SKBUILD)
+  include(CMakePackageConfigHelpers)
+  configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Fields2CoverConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/Fields2CoverConfig.cmake
+    INSTALL_DESTINATION ${F2C_INSTALL_CMAKEDIR}
+    PATH_VARS CMAKE_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR
+  )
 
-write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/Fields2CoverConfigVersion.cmake
-  VERSION ${PROJECT_VERSION}
-  COMPATIBILITY SameMajorVersion
-)
+  write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/Fields2CoverConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+  )
 
-install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/Fields2CoverConfig.cmake
-  ${CMAKE_CURRENT_BINARY_DIR}/Fields2CoverConfigVersion.cmake
-  DESTINATION ${F2C_INSTALL_CMAKEDIR}
-)
+  install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/Fields2CoverConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/Fields2CoverConfigVersion.cmake
+    DESTINATION ${F2C_INSTALL_CMAKEDIR}
+  )
 
-install(EXPORT Fields2CoverTargets
-  FILE Fields2CoverTargets.cmake
-  NAMESPACE Fields2Cover::
-  DESTINATION ${F2C_INSTALL_CMAKEDIR}
-)
+  install(EXPORT Fields2CoverTargets
+    FILE Fields2CoverTargets.cmake
+    NAMESPACE Fields2Cover::
+    DESTINATION ${F2C_INSTALL_CMAKEDIR}
+  )
+endif()
 
 
 #####################################################
@@ -194,7 +216,7 @@ set(CPACK_PACKAGE_VERSION_MAJOR ${FIELDS2COVER_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${FIELDS2COVER_VERSION_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${FIELDS2COVER_VERSION_PATCH})
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.rst")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
 set(CPACK_PACKAGE_CONTACT "gonzalo.miermunoz@wur.nl")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Gonzalo Mier<${CPACK_PACKAGE_CONTACT}>")
 
