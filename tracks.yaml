@@ -102,8 +102,8 @@ tracks:
     - git-bloom-generate -y rosdynrpm --prefix release/:{ros_distro} :{ros_distro}
       -i :{release_inc} --require-os fedora rhel
     devel_branch: null
-    last_release: v2.1.0
-    last_version: 2.1.0
+    last_release: v2.1.1
+    last_version: 2.1.1
     name: fields2cover
     patches: null
     release_inc: '1'
