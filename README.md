@@ -1,3 +1,26 @@
+## fields2cover (jazzy) - 2.1.1-1
+
+The packages in the `fields2cover` repository were released into the `jazzy` distro by running `/home/sanson/.local/bin/bloom-release fields2cover -r jazzy -t jazzy` on `Mon, 21 Sep 2026 07:34:45 -0000`
+
+The `fields2cover` package was released.
+
+Version of package(s) in repository `fields2cover`:
+
+- upstream repository: https://github.com/Fields2Cover/fields2cover.git
+- release repository: https://github.com/ros2-gbp/fields2cover-release.git
+- rosdistro version: `2.1.0-1`
+- old version: `2.1.0-1`
+- new version: `2.1.1-1`
+
+Versions of tools used:
+
+- bloom version: `0.14.3`
+- catkin_pkg version: `1.0.0`
+- rosdep version: `0.25.1`
+- rosdistro version: `1.0.1`
+- vcstools version: `0.1.42`
+
+
 ## fields2cover (humble) - 2.1.1-1
 
 The packages in the `fields2cover` repository were released into the `humble` distro by running `/home/sanson/.local/bin/bloom-release fields2cover --rosdistro humble --track humble` on `Mon, 21 Sep 2026 07:27:09 -0000`
